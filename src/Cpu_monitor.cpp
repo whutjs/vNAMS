@@ -1,11 +1,11 @@
-#include "cpu_monitor.h"
+#include "Cpu_monitor.h"
 
 using namespace std;
 
 const int Cpu_monitor::BUF_SIZE;
 
 /*
-** init all data; should be called before call other functions
+** init all data; should call before calling any other functions
 ** return: 0 if succeed; -1 if failed
 */
 int Cpu_monitor::init_cpu_monitor() {	
@@ -45,7 +45,7 @@ int Cpu_monitor::init_cpu_monitor() {
 }
 
 /*
-** The vector argument will be filled with the cpu usage.
+** The argument "usage" will be filled with the cpu usage.
 ** Notice: the vector will be cleared before using.
 ** usage: usage[0] contains the usages of total cpu. 
 ** usage[1] contains the cpu0 usage.

@@ -1,4 +1,4 @@
-#include "mem_monitor.h"
+#include "Mem_monitor.h"
 
 using namespace std;
 
@@ -17,7 +17,7 @@ int Mem_monitor::get_node_freemem(const virConnectPtr conn,
 		fprintf(stderr, "virNodeGetCellsFreeMemory failed: %s\n", err.message);
 		return -1;
 	}
-	/* if virNodeGetCellsFreeMemory wents well, ret should be 
+	/* if virNodeGetCellsFreeMemory went well, ret should be 
 	   the number of entries filled in freeMems.
 	*/
 	for(int i = 0; i < ret; i++) {
@@ -28,10 +28,10 @@ int Mem_monitor::get_node_freemem(const virConnectPtr conn,
 }
 
 /*
-** Get the memory page distribution in numa node of a process.
+** Get the memory page distribution in each numa node for a process.
 ** 
 ** When return with 0, the node_pages contain the number of pages
-** in every node. For example, node_pages[0]=10 says there are 10
+** in each node. For example, node_pages[0]=10 means there are 10
 ** pages in node0.
 ** return -1 if failed.
 */

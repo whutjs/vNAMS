@@ -11,7 +11,7 @@ TARGET = nuiod
 BIN_TARGET = ${DIR_BIN}/${TARGET}
 
 CC = g++
-CFLAGS = -g -Wall -I${DIR_INC}
+CFLAGS = -std=c++11 -g -Wall -I${DIR_INC}
 LIBS = -lpthread -lnuma -lvirt
 
 ${BIN_TARGET}:${OBJ}
