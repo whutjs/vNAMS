@@ -6,6 +6,8 @@
 #include "Numa_node.h"
 #include <vector>
 #include <map>
+
+class VM_info;
 /*
 ** Schedule Strategy interface.
 ** User should implement the schedule method.
@@ -24,6 +26,7 @@ public:
 	virtual std::vector<Decision> schedule(const std::map<int, VM_info> &vmInfoMap, 
 				const std::vector<double> &physicalCpuUsage, const Numa_node* nodeInfos,
 				const int numOfNode, const int NIC_node_id) = 0;
+	virtual ~ScheduleStrategy(){};
 };
 
 #endif

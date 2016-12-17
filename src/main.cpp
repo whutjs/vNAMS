@@ -20,6 +20,6 @@ int main(int argc, char* argv[])
 	ScheduleStrategy *strategy = new SimpleStrategy;
 	Nuiod nuiod(numa_number, cpu_number, "qemu:///system", strategy);	
 	nuiod.start();
-		
+	delete strategy;
 	exit(0);
 }

@@ -48,10 +48,19 @@ public:
 	unsigned int 						getPID() const { return pid; }
 
 	int 								getMajorMemResideOnNode() const { return mem_main_node_id; }
+
+	unsigned long long					getPerfCycles() const { return cycles; }
+	unsigned long long					getPerfInstructions() const { return instructions; }
+	unsigned long long					getPerfLLCDataRdMiss() const { return LLC_data_rd_miss; }
+	unsigned long long					getPerfLLCDataRdHit() const { return LLC_data_rd_hit; }
+	unsigned long long					getPerfLLCAllReference() const { return LLC_all_reference; }
+	unsigned long long					getPerfLLCAllMiss() const { return LLC_all_miss; }
+
 private:
 
 	friend class 				Nuiod;
 	friend class 				IOMonitor;
+	friend class 				PerfMonitor;
 
 	char						vm_name[VM_NAME_LEN];
 	char						netdev_pci_slot_str[PCI_STR_LEN];
@@ -84,10 +93,26 @@ private:
 	double						KB_per_sec_history;
 	unsigned long long			io_timestamp_usec;
 
-
 	/*********** I/O statistics data ********end *********/
 
-	/* libvirt API related */
+	/*********** Performance data ********start *********/
+
+	// Number of CPU cycles captured during monitoring period;
+	unsigned long long			cycles;
+	// Number of CPU Instructions captured during monitoring period;
+	unsigned long long			instructions;
+	// Counts demand data reads that miss in the LLC
+	unsigned long long			LLC_data_rd_miss;
+	// Counts all demand data reads that hit in the LLC
+	unsigned long long			LLC_data_rd_hit;
+	// Core-originated cacheable demand requests that refer to LLC (all LLC reference)
+	unsigned long long			LLC_all_reference;
+	// Core-originated cacheable demand requests missed LLC
+	unsigned long long			LLC_all_miss;
+
+	/*********** Performance data ********end *********/
+
+	/*********** libvirt API related ********************/
 	virDomainPtr 				dom_ptr;
 
 	// domain id, -1 if offlin

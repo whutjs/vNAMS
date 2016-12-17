@@ -11,6 +11,7 @@ void* cal_numa_lat_thread(void* arg) {
 
 Nuiod::~Nuiod() {
 	delete ioMonitor;
+	delete perfMonitor;
 	delete[] conn_str;
 
 	// need to free domain_ptr
@@ -68,6 +69,7 @@ int Nuiod::init() {
 		fprintf(stderr, "init_vminfo failed!\n");
 		return -1;
 	}
+	perfMonitor = new PerfMonitor;
 	ioMonitor = new IOMonitor;
 	// init the object
 	ioMonitor->initIOMonitor(netdev);
@@ -590,13 +592,6 @@ int Nuiod::monitor_io() {
 		VM_info &vm_info = mit->second;
 		int flag = ioMonitor->monitorIO(vm_info);
 		if(flag != 0) ret = flag;
-		else{
-			double ppsOld = vm_info.getHistoricalPacketsPerSec();
-			double ppsNew = vm_info.getNewPacketsPerSec();
-			if(ppsOld != ppsNew) {
-				printf("VM:\t%s packets per second:%.3f\n", vm_info.getVMName(), ppsNew);
-			}
-		}
 	}
 	return ret;
 }
@@ -613,6 +608,14 @@ void Nuiod::monitor(vector<double> &cpu_usage) {
 	int ret = 0;
 	ret = monitor_io();
 	cpu_monitor.get_cpu_usage(cpu_usage);
+	auto mit = vm_infos_map.begin();
+	for(; mit != vm_infos_map.end(); mit++) {
+		VM_info &vm_info = mit->second;		
+		int ret = perfMonitor->monitorPerfEvent(vm_info);
+		if(ret == -1) {
+			fprintf(stderr, "error while monitor %s perf event\n", vm_info.getVMName());
+		}
+	}
 	//if(ret != 0)
 	//	need_migrate = false;
 	// check the VM's CPU or memory usage

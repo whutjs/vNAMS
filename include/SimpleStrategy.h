@@ -15,8 +15,9 @@ enum VM_State{IO_STAT, OTHER_STAT, IDLE_STAT};
 ** Simple Strategy demo.
 */
 class SimpleStrategy: public ScheduleStrategy {
-public:
+public:	
 	SimpleStrategy():io_threshold(100000) {}
+	virtual ~SimpleStrategy(){}
 	std::vector<Decision> schedule(const std::map<int, VM_info> &vmInfoMap, 
 				const std::vector<double> &physicalCpuUsage, const Numa_node* nodeInfos,
 				const int numOfNode, const int NIC_NODE_ID);

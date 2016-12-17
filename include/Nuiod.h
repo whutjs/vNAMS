@@ -20,6 +20,7 @@
 #include <libvirt/virterror.h>
 #include <numa.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <map>
 #include <pthread.h>
 #include "IOMonitor.h"
@@ -32,6 +33,7 @@
 #include "Memory_migrate.h"
 #include "Numa_node.h"
 #include "ScheduleStrategy.h"
+#include "PerfMonitor.h"
 
 #define  NETDEV_LEN 32
 #define  MAXLINE 128
@@ -42,6 +44,7 @@
 class IOMonitor;
 class VM_info;
 class ScheduleStrategy;
+class PerfMonitor;
 
 class Nuiod {
 public:
@@ -97,6 +100,8 @@ private:
 	Cpu_monitor 			cpu_monitor;
 	Mem_monitor 			mem_monitor;
 	IOMonitor  				*ioMonitor;
+	PerfMonitor				*perfMonitor;
+
 	Memory_migrate 			mem_migrate;
 	Thread_migrate 			thread_migrate;
 
