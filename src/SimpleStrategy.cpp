@@ -2,6 +2,7 @@
 #include "utils.h"
 #include <list>
 #include <set>
+#include <cstdio>
 
 using namespace std;
 
@@ -9,6 +10,16 @@ vector<Decision> SimpleStrategy::schedule(const std::map<int, VM_info> &vmInfo,
 				const std::vector<double> &physicalCpuUsage, const Numa_node* nodeInfos,
 				const int numOfNode, const int netdev_numanode)
 {
+	// log information
+	for(int i = 0; i < numOfNode; i++) {
+		const std::set<int>& cpuOfNode = nodeInfos[i].getCPUIDsOfThisNode();
+		double nodeTotalCPUUsage = 0;
+		for(auto cpuid : cpuOfNode) {
+			nodeTotalCPUUsage += physicalCpuUsage[cpuid+1];
+		}
+		unsigned long long freeMemInMB = nodeInfos[i].getFreeMemoryInBytes()/1024/1024;
+		printf("Node:%d\nTotal CPU Usage:%.3f%%\t Free Memory:%llu MB\n", i, nodeTotalCPUUsage, freeMemInMB);
+	}
 	vector<Decision> decisions;
 	analyze(vmInfo, physicalCpuUsage, nodeInfos, numOfNode, netdev_numanode, decisions);
 	return decisions;
@@ -25,7 +36,7 @@ void SimpleStrategy::analyzeIOState(const VM_info &vm_info,
 		double new_pps_val = vm_info.getNewPacketsPerSec();
 		double new_kbps_val = vm_info.getNewKBPerSec();
 		double old_pps_val = vm_info.getHistoricalPacketsPerSec();
-		double old_kbps_val = vm_info.getHistoricalKBPerSec();
+		//double old_kbps_val = vm_info.getHistoricalKBPerSec();
 		if(new_pps_val < old_pps_val)
 			factor = SMOOTH_DEC_FACTOR;
 		else

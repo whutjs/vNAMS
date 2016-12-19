@@ -22,6 +22,7 @@
 class Numa_node {
 public:
 	const std::set<int>& 						getCPUIDsOfThisNode() const {return cpu_ids;}
+	unsigned long long 							getFreeMemoryInBytes()const { return free_mems;}
 	/* A sorted list according to memory latency in ascending order.
 	   pair->first=numa node number, 
 	   pair->second=latency between current node and the target node.	  

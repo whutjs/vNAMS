@@ -95,10 +95,12 @@ static void buf_release(void *);
 static double dependent_read(void *, int, int, int);
 static uint64_t rdtsc();
 
+/*
 static void
 print_usage(const char *exec_name)
 {
 }
+*/
 
 /*
  * Get the interval in milliseconds between 2 timestamps.
@@ -357,7 +359,7 @@ double get_numa_latency(int from_node, int to_node)
 	int node_alloc = from_node, cpu_consumer = to_node;
 	int meas_sec = MEAS_TIME_DEFAULT;
 	double ret = -1;
-	char c;
+	//char c;
 
 	s_randseed = 0;
 	optind = 1;

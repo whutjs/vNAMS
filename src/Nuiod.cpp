@@ -260,197 +260,111 @@ int Nuiod::set_vm_info(virDomainPtr dom_ptr, VM_info& vm_info, int dom_id) {
 		}
 
 		// get the memory distribution
-
 		ret = mem_monitor.get_proc_mem_numa_distribution(vm_info.pid, vm_info.mem_node_distr);
-
 		if(ret != 0) {
-
 			fprintf(stderr, "%s\n", "get_proc_mem_numa_distribution failed");
-
 			flag = -1;
-
 		}
 
 		// which node has maximum memory pages
-
 		unsigned pages_num = 0;
-
 		for(unsigned node_id = 0; node_id < vm_info.mem_node_distr.size(); node_id++) {
-
 			if(vm_info.mem_node_distr[node_id] > pages_num) {
-
 				pages_num = vm_info.mem_node_distr[node_id];
-
 				vm_info.mem_main_node_id = node_id;
-
 			}
-
 		}
 
 		/* calculate the vf_no */
-
 		char* dom_xml = virDomainGetXMLDesc(dom_ptr, 0);		
-
 		if(dom_xml != NULL) {
 
 			/* the xml format should be like this:
-
 			<address domain='0x0000' bus='0x07' slot='0x00' function='0x4'/>
-
 			*/
-
 			long slot_val = 0, func_val = 0;
-
 			char target_bus[PCI_STR_LEN+3];
-
 			sprintf(target_bus, "bus=\'%s\'", netdev_pci_bus_str);
-
 			char* bus_p = strstr(dom_xml, target_bus);
-
 			if(bus_p == NULL) {
-
 				fprintf(stderr, "Parsing domain xml error: cannot find 'bus' attribute.\n");
-
 				flag = -1;
-
 				free(dom_xml);
-
 				return flag;
-
 			}
 
 			// extract the pci slot value
-
 			char* slot_p = strstr(bus_p, "slot");
 
 			if(slot_p == NULL) {
-
 				fprintf(stderr, "Parsing domain xml error: cannot find 'slot' attribute.\n");
-
 				flag = -1;
-
 				free(dom_xml);
-
 				return flag;
-
 			}
 
 			while(*(slot_p) != '\'')
-
 				slot_p++;
-
 			slot_p++;
-
 			slot_val = strtol(slot_p, &slot_p, 0);
-
 			// extract the pci function value
-
 			char* funct_p = strstr(slot_p, "function");
-
 			if(funct_p == NULL) {
-
 				fprintf(stderr, "Parsing domain xml error: cannot find 'function' attribute.\n");
-
 				flag = -1;
-
 				free(dom_xml);
-
 				return flag;
-
 			}
 
 			while(*(funct_p) != '\'')
-
 				funct_p++;
-
 			funct_p++;
-
 			func_val = strtol(funct_p, &funct_p, 0);
 
 
-
 			// !!!Note:Assuming: 
-
 			// slot=0 function=1~7 -> vf 0~6
-
 			// slot=1 function=0~7 -> vf 7~14
-
 			// That is, vf_no = (vfslot - pfslot)*8 + (vf_function-1).
-
 			vm_info.vf_no = (slot_val - netdev_pci_slot_val) * 8 + (func_val - 1);
-
 			free(dom_xml);
-
 		} else{
-
 			fprintf(stderr, "%s\n", "cannot get domain xml");
-
 			flag = -1;
-
 		}
-
-
-
 		return flag;
-
 }
 
 
 
 /* 
-
 ** Initialize the VM info.
-
 ** return -1 if failed, 0 if succeed.
-
 */
-
 int Nuiod::init_vminfo() {
 
 	// Using libvirt to get all running domain.
-
 	int 	dom_num = 0;
-
 	int 	*running_dom_ids;	
-
 	int 	ret = 0;
-
 	int 	flag = 0;
 
 	dom_num = virConnectNumOfDomains(conn);
-
 	running_dom_ids = new int[dom_num];
-
 	dom_num = virConnectListDomains(conn, running_dom_ids, dom_num);	
-
-
-
 	// get domain ptr
-
 	for(int i = 0; i < dom_num; i++) {
-
 		int dom_id = running_dom_ids[i];
-
 		VM_info vm_info;
-
 		vm_infos_map[dom_id] = vm_info;
-
 		virDomainPtr dom_ptr;
-
 		dom_ptr = virDomainLookupByID(conn, dom_id);
-
 		flag = set_vm_info(dom_ptr, vm_infos_map[dom_id], dom_id);
-
 		if(flag == -1) 
-
 			ret = -1;			
-
 	}
-
 	delete[] running_dom_ids;
-
 	return ret;
-
 }
 
 
@@ -460,29 +374,19 @@ int Nuiod::init_vminfo() {
 
 
 void Nuiod::libvirt_error_handle(void* userdata, virErrorPtr err) {
-
 	fprintf(stderr, "Global handler, failure of libvirt library call:\n");
-
 	fprintf(stderr, "Code:%d\n", err->code);
-
 	fprintf(stderr, "Domain:%d\n", err->domain);
-
 	fprintf(stderr, "Message:%s:\n", err->message);
-
 	fprintf(stderr, "Level:%d\n", err->level);
-
 	fprintf(stderr, "str1:%s\n", err->str1);
-
 }
 
 
 
 /*
-
 ** Get the real cpu of VM. Return -1 if failed.
-
 */
-
 int Nuiod::get_vm_real_cpu(virDomainPtr dom_ptr) {
 
 	int ret = -1;
@@ -492,31 +396,20 @@ int Nuiod::get_vm_real_cpu(virDomainPtr dom_ptr) {
 	// TODO: Donot make this assumption.
 
 	virError vir_err;
-
 	virVcpuInfoPtr vcpu_info = new virVcpuInfo;
-
 	ret = virDomainGetVcpus(dom_ptr, vcpu_info, 1, NULL, 0);
-
 	if(ret == -1) {
-
 		virCopyLastError(&vir_err);
-
 		fprintf(stderr, "virGetVcpus failed: %s\n", vir_err.message);
-
 		virResetError(&vir_err);				
-
 	} else{
-
 		ret = vcpu_info->cpu;		
-
 	}
 
 	if(vcpu_info)
-
 		delete vcpu_info;
 
 	return ret;
-
 }
 
 /* main procedure of nuiod */
@@ -605,9 +498,14 @@ int Nuiod::monitor_io() {
 */
 
 void Nuiod::monitor(vector<double> &cpu_usage) {
-	int ret = 0;
-	ret = monitor_io();
+	//int ret = 0;
+	 monitor_io();
 	cpu_monitor.get_cpu_usage(cpu_usage);
+	vector<unsigned long long> freeMemVec;
+	mem_monitor.get_node_freemem(this->conn, freeMemVec);
+	for(unsigned i = 0; i < freeMemVec.size(); i++) {
+		numa_nodes[i].free_mems = freeMemVec[i];
+	}
 	auto mit = vm_infos_map.begin();
 	for(; mit != vm_infos_map.end(); mit++) {
 		VM_info &vm_info = mit->second;		
