@@ -23,7 +23,6 @@ int Mem_monitor::get_node_freemem(const virConnectPtr conn,
 	for(int i = 0; i < ret; i++) {
 		free_mem.push_back(free_mems[i]);
 	}
-
 	return 0;
 }
 

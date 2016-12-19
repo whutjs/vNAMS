@@ -36,7 +36,7 @@ public:
 	/* Using the libvirt API to get the amount of free memory in all NUMA nodes.
 	* return -1 if failed, 0 if succeed.
 	*/
-	int get_node_freemem(const virConnectPtr conn, std::vector<unsigned long long> &free_mem);
+	int get_node_freemem(const virConnectPtr conn, std::vector<unsigned long long> &free_mems);
 	/* get the memory page distribution in numa node of a process */
 	int get_proc_mem_numa_distribution(const unsigned int pid, std::vector<unsigned int> &node_pages);
 
