@@ -18,9 +18,12 @@ int	PerfMonitor::monitorPerfEvent(VM_info& vmInfo) {
 	int ret = 0;
 	const unsigned BUF_SIZE = 128;
 	char buffer[BUF_SIZE];
-	char cmd[30];
-    snprintf(cmd, 30,  "./perf_cpi_cachemiss.sh %u", vmInfo.getPID());
-    FILE* pipe = popen(cmd, "r");
+    string cmd = "sudo perf stat -e cycles,instructions,"
+    "cpu/event=0xb7,umask=0x1,offcore_rsp=0x3f803c0001,name=offcore_response_demand_data_rd_llc_hit_any_response/,"
+    "cpu/event=0xb7,umask=0x1,offcore_rsp=0x3fffc20001,name=offcore_response_demand_data_rd_llc_miss_any_response/,"
+    "cpu/event=0x2e,umask=0x4f,name=longest_lat_cache_reference/,cpu/event=0x2e,umask=0x41,name=longest_lat_cache_miss/"
+    " -x,  -p " + to_string(vmInfo.getPID()) +" sleep 0.1 2>&1";
+    FILE* pipe = popen(cmd.c_str(), "r");
     if (!pipe) throw std::runtime_error("popen() failed!");
     try {
         while (!feof(pipe)) {
