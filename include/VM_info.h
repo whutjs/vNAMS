@@ -16,9 +16,6 @@
 #define VM_NAME_LEN 64
 #define PCI_STR_LEN 8
 
-
-
-
 /*
 **	Virtual machine object.
 **
@@ -31,6 +28,7 @@ public:
 		rx_bytes = tx_bytes = total_KB = 0;
 		dom_ptr = NULL;
 		io_timestamp_usec = 0;
+		vm_event_state = VIR_DOMAIN_EVENT_UNDEFINED;
 	}
 	const char* 						getVMName() const { return vm_name;}	
 	double 								getNewPacketsPerSec() const { return packets_per_sec; }
@@ -132,7 +130,12 @@ private:
 	int 						mem_main_node_id;
 	// The corresponding process id of this VM.
 	unsigned int 				pid;
-
+	/* valid state include:
+	** 1,Suspended; 2,Resumed;
+	** 3,Stopped;	4,Shutdown;
+	** 5,PMSuspended; 6,Crashed
+	*/ 
+	virDomainEventType			vm_event_state;
 };
 
 

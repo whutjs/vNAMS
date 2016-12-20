@@ -19,6 +19,9 @@ Nuiod::~Nuiod() {
 
     for(it = vm_infos_map.begin(); it != vm_infos_map.end(); ++it)
     	virDomainFree((it->second).dom_ptr);     
+
+    virConnectDomainEventDeregister(conn, virVMEventCallBack);
+    virConnectUnregisterCloseCallback(conn, virConnectCloseCallBack);
     virConnectClose(conn); 
 
     /* release numa related data  */
@@ -42,6 +45,16 @@ Nuiod::~Nuiod() {
 // return -1 if failed, 0 if succeed
 int Nuiod::init() {
 	virSetErrorFunc(NULL, libvirt_error_handle);
+	if (virInitialize() < 0) {
+        fprintf(stderr, "Failed to initialize libvirt");
+        return -1;
+    }
+
+    if (virEventRegisterDefaultImpl() < 0) {
+        fprintf(stderr, "Failed to register event implementation: %s\n",
+                virGetLastErrorMessage());
+         return -1;
+    }
 	conn = virConnectOpen(conn_str);
 	if(conn == NULL) {
 		fprintf(stderr, "Failed to open connection to %s\n", conn_str);
@@ -63,6 +76,18 @@ int Nuiod::init() {
 	ret = parse_conf();
 	if(ret == -1)
 		exit(1);	
+
+	if (virConnectRegisterCloseCallback(conn,
+                                        virConnectCloseCallBack, NULL, NULL) < 0) {
+        fprintf(stderr, "Unable to register close callback\n");
+        return -1;
+    }
+
+    ret = virConnectDomainEventRegister(conn, virVMEventCallBack, this, NULL);
+    if(ret != 0) {
+		fprintf(stderr, "Unable to register Domain Event callback!\n");
+		return -1;
+	}
 
 	ret = init_vminfo();
 	if(ret != 0) {
@@ -190,73 +215,41 @@ int Nuiod::parse_conf() {
 
 
 /* using the virDomainPtr to initialize a VM_info object */
-
 int Nuiod::set_vm_info(virDomainPtr dom_ptr, VM_info& vm_info, int dom_id) {
 
 		int flag = 0;		
-
 		vm_info.dom_ptr = dom_ptr;
-
 		vm_info.dom_id = dom_id;
-
 		// Note:Assuming a vm has only one vcpu now.
-
 		// TODO: Donot make this assumption.
-
 		int ret = get_vm_real_cpu(dom_ptr);		
-
 		if(ret == -1) {			
-
 			flag = -1;	
-
 		} else{
-
 			vm_info.real_cpu_no = ret;
-
 			cpu_vm_mapping.insert(make_pair(vm_info.real_cpu_no, vm_info.dom_id));
-
 		}		
 
-
-
 		const char* dom_name = virDomainGetName(dom_ptr);
-
 		int len = strlen(dom_name);
-
 		if(len >= VM_NAME_LEN) {
-
 			fprintf(stderr, "VM name:%s too long! Length:%d\n", dom_name, len);			
-
 			flag = -1;	
-
 		}else {
-
 			strncpy(vm_info.vm_name, dom_name, len);
-
 			vm_info.vm_name[len] = '\0';
-
 		}
 
 		// get the pid according to dom_name
-
 		char path_buf[MAX_PATH_LEN];
-
 		snprintf(path_buf, MAX_PATH_LEN, "/var/run/libvirt/qemu/%s.pid", dom_name);
-
 		FILE* pid_file = fopen(path_buf, "r");
-
 		if(pid_file == NULL) {
-
 			fprintf(stderr, "cannot open %s, error:%s\n", path_buf, strerror(errno));
-
 			flag = -1;
-
 		} else{
-
 			fscanf(pid_file, "%u", &vm_info.pid);
-
 			fclose(pid_file);
-
 		}
 
 		// get the memory distribution
@@ -371,8 +364,6 @@ int Nuiod::init_vminfo() {
 
 /****** libvirt API related  ***************/
 
-
-
 void Nuiod::libvirt_error_handle(void* userdata, virErrorPtr err) {
 	fprintf(stderr, "Global handler, failure of libvirt library call:\n");
 	fprintf(stderr, "Code:%d\n", err->code);
@@ -382,6 +373,93 @@ void Nuiod::libvirt_error_handle(void* userdata, virErrorPtr err) {
 	fprintf(stderr, "str1:%s\n", err->str1);
 }
 
+void Nuiod::virConnectCloseCallBack(virConnectPtr conn ATTRIBUTE_UNUSED,
+             				int reason,
+             				void *opaque ATTRIBUTE_UNUSED) {
+	switch ((virConnectCloseReason) reason) {
+    case VIR_CONNECT_CLOSE_REASON_ERROR:
+        fprintf(stderr, "Connection closed due to I/O error\n");
+        return;
+
+    case VIR_CONNECT_CLOSE_REASON_EOF:
+        fprintf(stderr, "Connection closed due to end of file\n");
+        return;
+
+    case VIR_CONNECT_CLOSE_REASON_KEEPALIVE:
+        fprintf(stderr, "Connection closed due to keepalive timeout\n");
+        return;
+
+    case VIR_CONNECT_CLOSE_REASON_CLIENT:
+        fprintf(stderr, "Connection closed due to client request\n");
+        return;
+
+   default:
+        break;
+    };
+
+    fprintf(stderr, "Connection closed due to unknown reason\n");
+}
+
+// Libvirt event call back. Handle the VM shutdown/start/reboot event
+int Nuiod::virVMEventCallBack(virConnectPtr conn ATTRIBUTE_UNUSED,
+							  virDomainPtr dom, int event,
+							  int detail, void *data) {
+	if(data == NULL) {
+		return -1;
+	}
+	int ret = 0;
+	Nuiod *nuiod = (Nuiod*)data;
+	int domId = virDomainGetID(dom);
+	virDomainEventType  curEventState = (virDomainEventType) event;
+	if(curEventState == VIR_DOMAIN_EVENT_STARTED) {
+		// A new VM started
+		VM_info vm_info;
+		(nuiod->vm_infos_map)[domId] = vm_info;
+		virDomainPtr dom_ptr;
+		dom_ptr = virDomainLookupByID(conn, domId);
+		int flag = nuiod->set_vm_info(dom_ptr, (nuiod->vm_infos_map)[domId], domId);
+		(nuiod->vm_infos_map)[domId].vm_event_state = curEventState;
+		if(flag == -1) 
+			ret = -1;		
+	} else if(curEventState == VIR_DOMAIN_EVENT_SUSPENDED
+			|| curEventState == VIR_DOMAIN_EVENT_RESUMED
+			|| curEventState == VIR_DOMAIN_EVENT_STOPPED
+			|| curEventState == VIR_DOMAIN_EVENT_SHUTDOWN
+			|| curEventState == VIR_DOMAIN_EVENT_CRASHED ){
+
+		auto vm_infos_map_it = (nuiod->vm_infos_map).find(domId);
+		VM_info& vm_info = vm_infos_map_it->second;
+		if(vm_infos_map_it == (nuiod->vm_infos_map).end()) {
+			fprintf(stderr, "Error VM:%d doesn't exist in vm_infos_map!\n", domId);
+			return -1;
+		}
+		virDomainEventType	lastVMEventState = vm_info.vm_event_state;
+		if((lastVMEventState == VIR_DOMAIN_EVENT_SHUTDOWN ||lastVMEventState == VIR_DOMAIN_EVENT_STOPPED)
+			&& (curEventState == VIR_DOMAIN_EVENT_STOPPED)) {
+					// if last event state is shutdown or stopped and
+					// current event state is stopped, the VM has been turned off
+					// For VM shutdown, remove any related information for this VM.
+					/* remove the CPU_VM_MAPPING */
+					auto rcpu_it = (nuiod->cpu_vm_mapping).find(vm_info.real_cpu_no);
+					if(rcpu_it != (nuiod->cpu_vm_mapping).end() && 
+						rcpu_it->second == vm_info.dom_id) {
+						// Attention!!! If cpu_vm_mapping[vm_info.real_cpu_no] != vm_info.dom_id,
+						// it means that a new mapping has overwritten the old mapping!!
+						// In this case we should not erase this key!!!!!!!
+						(nuiod->cpu_vm_mapping).erase(rcpu_it);
+					}
+					/* remove the VM from vm_infos_map */
+					(nuiod->vm_infos_map).erase(vm_infos_map_it);
+		} else {
+			// Other states include "Reboot", "Susbend", and none of them 
+			// need additional handling
+			vm_info.vm_event_state = curEventState;
+		}
+
+		
+	}
+    return ret;
+}
 
 
 /*
@@ -464,6 +542,10 @@ void Nuiod::start() {
 	}
 	vector<double> cpu_usage;
 	while(1) {
+		if (virEventRunDefaultImpl() < 0) {
+            fprintf(stderr, "Failed to run event loop: %s\n",
+                    virGetLastErrorMessage());
+        }
 		// Refresh the cpu mapping first, because 
 		// the Linux default scheduler may schedule
 		// the VM to a different cpu.

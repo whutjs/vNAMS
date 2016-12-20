@@ -39,7 +39,9 @@
 #define  MAXLINE 128
 #define  MAX_PATH_LEN 64
 #define PCI_STR_LEN 8
-
+#ifndef ATTRIBUTE_UNUSED
+# define ATTRIBUTE_UNUSED __attribute__((__unused__))
+#endif
 
 class IOMonitor;
 class VM_info;
@@ -126,6 +128,16 @@ private:
 	static void 			libvirt_error_handle(void* userdata, virErrorPtr err);
 	// get the real cpu of VM
 	int 					get_vm_real_cpu(virDomainPtr);
+
+	// Libvirt event call back. Handle the VM shutdown/start/reboot event
+	static int 				virVMEventCallBack(virConnectPtr conn ATTRIBUTE_UNUSED,
+												virDomainPtr dom, int event,
+												int detail, void *nuiod);
+	// Handle the libvirt connection close event
+	static void 			virConnectCloseCallBack(virConnectPtr conn ATTRIBUTE_UNUSED,
+             								int reason,
+             								void *opaque ATTRIBUTE_UNUSED);
+
 
 
 	/********************** main procedure of nuiod **********************/	
